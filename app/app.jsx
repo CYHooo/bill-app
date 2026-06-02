@@ -115,10 +115,14 @@ function LedgerApp() {
 /* 同步状态徽标（本地版显示“本地保存”；接入云后显示“已同步”） */
 function SyncBadge() {
   const cloud = !!(window.LedgerCloud && window.LedgerCloud.enabled);
+  const demo = cloud && typeof window.LedgerCloud.isDemoUser === 'function'
+    && window.LedgerCloud.isDemoUser();
   return (
     <div className="syncbadge">
       <span className="syncbadge__dot" />
-      {cloud ? '已云同步 · 多设备' : '本地保存 · 刷新不丢'}
+      {demo ? '本地演示 · 不占额度'
+        : cloud ? '已云同步 · 多设备'
+        : '本地保存 · 刷新不丢'}
     </div>
   );
 }

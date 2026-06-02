@@ -38,12 +38,24 @@
 
   var db = firebase.firestore();
   var auth = firebase.auth ? firebase.auth() : null;
+  var DEMO_EMAILS = (cfg.demoEmails || []).map(function (e) {
+    return String(e || '').toLowerCase();
+  });
+
+  // Demo accounts are local-only sandboxes for visitors trying the app
+  // without spending the owner's Firestore quota.
+  function isDemoUser() {
+    var u = auth && auth.currentUser;
+    if (!u || !u.email) return false;
+    return DEMO_EMAILS.indexOf(String(u.email).toLowerCase()) !== -1;
+  }
 
   // Per-user document: /ledger/{uid}. Each authenticated user gets an
   // isolated doc keyed by their own UID, enforced by Firestore rules.
   function getRef() {
     var u = auth && auth.currentUser;
     if (!u) return null;
+    if (isDemoUser()) return null;  // skip Firestore entirely for demo users
     return db.collection('ledger').doc(u.uid);
   }
 
@@ -55,6 +67,7 @@
 
   window.LedgerCloud = {
     enabled: true,
+    isDemoUser: isDemoUser,
     load: function () {
       var ref = getRef();
       if (!ref) return Promise.resolve(null);
