@@ -120,8 +120,8 @@ function SyncBadge() {
   return (
     <div className="syncbadge">
       <span className="syncbadge__dot" />
-      {demo ? '本地演示 · 不占额度'
-        : cloud ? '已云同步 · 多设备'
+      {demo ? '本地演示'
+        : cloud ? '已云同步'
         : '本地保存 · 刷新不丢'}
     </div>
   );
