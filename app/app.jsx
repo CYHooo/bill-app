@@ -127,6 +127,30 @@ function SyncBadge() {
   );
 }
 
+/* 空闲自动退出：超过 IDLE_TIMEOUT_MS 没有任何用户交互就 signOut */
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+function useIdleSignOut(active) {
+  useEffect(() => {
+    if (!active) return;
+    let timer = null;
+    const reset = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (window.LedgerAuth) window.LedgerAuth.signOut();
+      }, IDLE_TIMEOUT_MS);
+    };
+    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'wheel'];
+    events.forEach(e => window.addEventListener(e, reset, { passive: true }));
+    document.addEventListener('visibilitychange', reset);
+    reset();
+    return () => {
+      if (timer) clearTimeout(timer);
+      events.forEach(e => window.removeEventListener(e, reset));
+      document.removeEventListener('visibilitychange', reset);
+    };
+  }, [active]);
+}
+
 /* 鉴权门：启用 Firebase 登录时，未登录显示登录界面 */
 function App() {
   const authOn = !!(window.LedgerAuth && window.LedgerAuth.enabled);
@@ -136,6 +160,8 @@ function App() {
     if (!authOn) return;
     window.LedgerAuth.onChange(u => setPhase(u ? 'in' : 'out'));
   }, []);
+
+  useIdleSignOut(authOn && phase === 'in');
 
   if (phase === 'loading') {
     return <div className="boot">载入中…</div>;
