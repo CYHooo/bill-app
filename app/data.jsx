@@ -78,35 +78,48 @@ function emptyState() {
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
-/* ---------- 演示种子数据（仅 demo 账号首次进入时填充） ---------- */
-// Anchored to the current month so the seed always looks fresh regardless
-// of when a visitor signs in with the demo credentials.
+/* ---------- 演示种子数据（每次 demo 加载都随机生成一份） ---------- */
+// Randomized each call so refreshing the demo session yields a fresh
+// sample ledger; anchored to the current month for realism.
 function demoSeed() {
   const today = new Date();
   const month = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-  const day = (d) => `${month}-${String(d).padStart(2, '0')}`;
-  const tx = (date, category, amount, note) => ({ id: uid(), date, category, amount, note: note || '' });
+  const maxDay = today.getDate();
+
+  const POOLS = {
+    food:      { range: [8000, 30000],  notes: ['公司附近午饭', '便利店便当', '晚饭', '烤肉', '韩餐', '拌饭', '炸鸡', '泡菜汤', '麻辣烫'] },
+    coffee:    { range: [3500, 6500],   notes: ['美式', '拿铁', '冰美式', '卡布奇诺', '抹茶拿铁', '手冲'] },
+    social:    { range: [25000, 80000], notes: ['朋友聚餐 AA', '小酌', '生日聚会', 'KTV', '酒吧'] },
+    transport: { range: [1500, 8000],   notes: ['地铁往返', '打车', '公交', '出租车'] },
+    fun:       { range: [10000, 35000], notes: ['电影', '游戏', '展览', '密室逃脱', '书店', '健身房'] },
+    shopping:  { range: [15000, 60000], notes: ['日用品补货', '衣服', '化妆品', '电子配件', '书籍', '家居小物'] },
+  };
+  const CATS = Object.keys(POOLS);
+  const randInt = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+  const pick = (arr) => arr[randInt(0, arr.length - 1)];
+
+  const n = randInt(8, 15);
+  const transactions = [];
+  for (let i = 0; i < n; i++) {
+    const cat = pick(CATS);
+    const p = POOLS[cat];
+    const amount = Math.round(randInt(p.range[0], p.range[1]) / 100) * 100;
+    transactions.push({
+      id: uid(),
+      date: `${month}-${String(randInt(1, maxDay)).padStart(2, '0')}`,
+      category: cat,
+      amount: amount,
+      note: pick(p.notes),
+    });
+  }
+
   return {
-    transactions: [
-      tx(day(1), 'food',      13000, '公司附近午饭'),
-      tx(day(1), 'coffee',     4800, '美式'),
-      tx(day(1), 'transport',  2900, '地铁往返'),
-      tx(day(2), 'food',       9500, '便利店便当'),
-      tx(day(2), 'social',    48000, '朋友聚餐 AA'),
-      tx(day(2), 'coffee',     5500, '拿铁'),
-      tx(day(3), 'shopping',  32000, '日用品补货'),
-      tx(day(3), 'food',      16000, '晚饭'),
-      tx(day(4), 'fun',       18000, '电影'),
-      tx(day(4), 'transport',  3300, '打车'),
-      tx(day(4), 'coffee',     4800, '美式'),
-      tx(day(5), 'food',      22000, '烤肉'),
-      tx(day(5), 'social',    26000, '小酌'),
-    ],
+    transactions,
     cashflow: {
       [month]: {
-        availableCash: 4400000,
+        availableCash: randInt(30, 50) * 100000,
         rent: 500000, mgmt: 100000, phone: 88000,
-        cardRepayment: 1300000,
+        cardRepayment: randInt(8, 18) * 100000,
         salary: 4400000,
       },
     },
@@ -117,25 +130,27 @@ function demoSeed() {
 /* ============================================================
    Store —— 本地持久化 + 操作
    ============================================================ */
-const LS_KEY_DEFAULT = 'ledger.v1';
-const LS_KEY_DEMO = 'ledger.v1.demo';
+const LS_KEY = 'ledger.v1';
+const LS_KEY_DEMO_LEGACY = 'ledger.v1.demo';
 
-// Demo accounts get their own localStorage bucket so the owner's local
-// cache never leaks into a shared test session (and vice versa).
 function isDemoUser() {
   const C = window.LedgerCloud;
   return !!(C && typeof C.isDemoUser === 'function' && C.isDemoUser());
 }
-function lsKey() {
-  return isDemoUser() ? LS_KEY_DEMO : LS_KEY_DEFAULT;
-}
 
+// Demo sessions are intentionally volatile: every page load regenerates
+// a fresh random seed and nothing gets written to localStorage, so the
+// owner's cache and the demo session can never bleed into each other.
 function loadState() {
+  if (isDemoUser()) {
+    try { localStorage.removeItem(LS_KEY_DEMO_LEGACY); } catch (e) {}
+    return demoSeed();
+  }
   try {
-    const raw = localStorage.getItem(lsKey());
+    const raw = localStorage.getItem(LS_KEY);
     if (raw) return JSON.parse(raw);
   } catch (e) {}
-  return isDemoUser() ? demoSeed() : emptyState();
+  return emptyState();
 }
 
 function useStore() {
@@ -161,8 +176,9 @@ function useStore() {
 
   useEffect(() => {
     if (first.current) { first.current = false; return; }
+    if (isDemoUser()) return;  // demo session: in-memory only, no persistence
     const s = JSON.stringify(state);
-    try { localStorage.setItem(lsKey(), s); } catch (e) {}
+    try { localStorage.setItem(LS_KEY, s); } catch (e) {}
     const C = window.LedgerCloud;
     if (C && C.enabled && s !== lastSync.current) { lastSync.current = s; C.save(state); }
   }, [state]);
