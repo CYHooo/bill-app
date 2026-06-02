@@ -37,8 +37,16 @@
   } catch (e) { return; }
 
   var db = firebase.firestore();
-  var ROW = cfg.row || 'main';
-  var ref = db.collection('ledger').doc(ROW);
+  var auth = firebase.auth ? firebase.auth() : null;
+
+  // Per-user document: /ledger/{uid}. Each authenticated user gets an
+  // isolated doc keyed by their own UID, enforced by Firestore rules.
+  function getRef() {
+    var u = auth && auth.currentUser;
+    if (!u) return null;
+    return db.collection('ledger').doc(u.uid);
+  }
+
   var unwrap = function (snap) {
     if (!snap.exists) return null;
     var d = snap.data().data;
@@ -48,12 +56,18 @@
   window.LedgerCloud = {
     enabled: true,
     load: function () {
+      var ref = getRef();
+      if (!ref) return Promise.resolve(null);
       return ref.get().then(unwrap).catch(function () { return null; });
     },
     save: function (state) {
+      var ref = getRef();
+      if (!ref) return Promise.resolve();
       return ref.set({ data: JSON.stringify(state), updated_at: Date.now() }).catch(function () {});
     },
     subscribe: function (cb) {
+      var ref = getRef();
+      if (!ref) return;
       ref.onSnapshot(function (snap) {
         if (snap.metadata && snap.metadata.hasPendingWrites) return;  // 忽略本机写入回声
         var s = unwrap(snap);
