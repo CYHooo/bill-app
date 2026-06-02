@@ -57,11 +57,13 @@ function addMonth(m, delta) {
 function daysInMonth(m) { const [y, mm] = m.split('-').map(Number); return new Date(y, mm, 0).getDate(); }
 
 /* ---------- 默认现金流配置 ---------- */
+// Fixed monthly bills default to the user's baseline amounts; any month-level
+// override stored on state.cashflow[month] still wins via spread order.
 function blankCashflow() {
   return {
-    rent: 0, mgmt: 0, phone: 0,
+    rent: 500000, mgmt: 100000, phone: 88000,
     cardRepayment: 0,
-    salary: 0,
+    salary: 4400000,
   };
 }
 

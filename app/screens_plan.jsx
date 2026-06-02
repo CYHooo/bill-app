@@ -38,15 +38,26 @@ function CashflowScreen({ state, month, setCashflow }) {
           )} />
       </section>
 
-      {/* 新增消费 */}
-      <div className="panel__title">本月新增消费<span>实际花掉的</span></div>
+      {/* 固定消费 */}
+      <div className="panel__title">固定消费<span>每月固定，需要时点数字手动调整</span></div>
       <section className="panel">
         <MoneyRow label="房租" value={cf.rent} onChange={set('rent')} />
         <MoneyRow label="管理费" value={cf.mgmt} onChange={set('mgmt')} />
         <MoneyRow label="话费 + 网费" value={cf.phone} onChange={set('phone')} />
+        <MoneyRow label="固定消费小计" value={fixed} readOnly strong />
+      </section>
+
+      {/* 其他花销 */}
+      <div className="panel__title">其他花销<span>来自每日记账</span></div>
+      <section className="panel">
         <MoneyRow label="交通" sub="自动汇总每日记账·交通" value={transportSpending} readOnly color="#7E9A77" />
         <MoneyRow label="日常花销" sub="自动汇总每日记账（不含交通）" value={dailySpending} readOnly color="#C2784F" />
-        <MoneyRow label="① 本月新增消费合计" value={newSpending} readOnly strong />
+        <MoneyRow label="其他花销小计" value={transportSpending + dailySpending} readOnly strong />
+      </section>
+
+      {/* 新增消费合计 */}
+      <section className="panel">
+        <MoneyRow label="① 本月新增消费合计" sub="固定消费 + 其他花销" value={newSpending} readOnly strong />
       </section>
 
       {/* 信用卡还款 */}
