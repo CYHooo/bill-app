@@ -19,7 +19,7 @@ function MonthSwitcher({ month, setMonth }) {
   );
 }
 
-function App() {
+function LedgerApp() {
   const store = useStore();
   const [tab, setTab] = useState('home');
   const [month, setMonth] = useState(monthOf(todayISO()));
@@ -28,6 +28,9 @@ function App() {
 
   useEffect(() => { applyTheme(theme); }, [theme]);
   const toggleMode = () => setTheme(t => counterpart(t));
+
+  const authOn = !!(window.LedgerAuth && window.LedgerAuth.enabled);
+  const signOut = () => { if (window.LedgerAuth) window.LedgerAuth.signOut(); };
 
   const openEntry = (tx) => setEntry({ open: true, tx: tx || null });
   const closeEntry = () => setEntry(e => ({ ...e, open: false }));
@@ -81,6 +84,7 @@ function App() {
         <div className="topbar">
           <div className="topbar__brand"><span className="topbar__mark">₩</span> 记账</div>
           <div className="topbar__right">
+            {authOn && <button className="modetoggle" onClick={signOut} title="退出登录" aria-label="退出登录"><Icon name="logout" size={18} /></button>}
             <ModeToggle theme={theme} onToggle={toggleMode} />
             <MonthSwitcher month={month} setMonth={setMonth} />
           </div>
@@ -117,6 +121,25 @@ function SyncBadge() {
       {cloud ? '已云同步 · 多设备' : '本地保存 · 刷新不丢'}
     </div>
   );
+}
+
+/* 鉴权门：启用 Firebase 登录时，未登录显示登录界面 */
+function App() {
+  const authOn = !!(window.LedgerAuth && window.LedgerAuth.enabled);
+  const [phase, setPhase] = useState(authOn ? 'loading' : 'in');
+
+  useEffect(() => {
+    if (!authOn) return;
+    window.LedgerAuth.onChange(u => setPhase(u ? 'in' : 'out'));
+  }, []);
+
+  if (phase === 'loading') {
+    return <div className="boot">载入中…</div>;
+  }
+  if (phase === 'out') {
+    return <LoginScreen />;
+  }
+  return <LedgerApp />;
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);

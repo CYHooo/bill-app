@@ -7,12 +7,14 @@
 index.html         ← 入口（GitHub Pages 默认找它）
 app/
   cloud.js         可选：多设备实时同步（Firebase Firestore）
+  auth.js          可选：登录（Firebase Auth）
   data.jsx         数据层：分类 / 韩元 / 持久化 / 现金流计算
   ui.jsx           组件：弹层 / 环形图 / 录入键盘
+  login.jsx        登录界面
   screens_main.jsx 首页 + 记账
   screens_plan.jsx 现金流 + 统计
   theme.jsx        日/夜配色切换
-  app.jsx          外壳：导航 / 月份切换 / 挂载
+  app.jsx          外壳：鉴权门 / 导航 / 月份切换 / 挂载
 ```
 > 部署只需要 `index.html` 和 `app/` 这两样。`uploads/`、`screenshots/` 不用上传。
 
@@ -73,18 +75,36 @@ app/
 
 ---
 
-## ⚠️ 关于隐私（重要）
+## ⚠️ 关于隐私 —— 开启登录（推荐）
 
-GitHub Pages 是公开网页，上面第二步的 `firebaseConfig` 会出现在网页源码里。也就是说：
-**任何人只要拿到你的网址，理论上就能读到你的记账数据。**
+GitHub Pages 是公开网页，`firebaseConfig` 会出现在源码里。**不开登录的话，任何人拿到你的网址、配上数据库公开规则，理论上就能读到你的账目。**
 
-- 如果只是自己用、网址不外传，账目也不太敏感 —— 上面的做法够用（把 `row` 设成
-  别人猜不到的随机串能再挡一层）。
-- 如果想 **真正私密**，正确做法是开 Firebase 的 **登录（Auth）**，用你自己的一个
-  账号，Firestore 规则改成只允许「登录后的你」读写。代价是要在网页上加一个一次性登录框
-  （登录后会一直保持，不用每次输）。
+App 已内置一个登录界面（仅在你按下面配置后才会出现）。开启「只有我能进」三步：
 
-> 想要私密版的话告诉我，我给你加一个极简的登录/解锁界面，并把规则换成按账号隔离的安全规则。
+1. **建你的账号**：Firebase 控制台 → **Authentication → Get started** → 开启
+   **Email/Password** 登录方式 → **Users → Add user**，填你自己的邮箱 + 密码。
+   建好后在该用户那一行复制 **User UID**（一串字符）。
+2. **锁数据库规则**：Firestore → **Rules**，改成只认你的 UID（把第二步的开放规则替换掉）：
+   ```
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /ledger/{doc} {
+         allow read, write: if request.auth != null
+                            && request.auth.uid == '粘贴你的 UID';
+       }
+     }
+   }
+   ```
+3. **引入 Auth SDK**：在 `index.html` 里，`firebase-firestore-compat.js` 那行之后，再加一行：
+   ```html
+   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+   ```
+
+重新部署后，打开网址会先要求**登录**；只有你的账号能进、能读写，别人即使打开页面也是空的登录框、读不到任何数据。登录状态会一直保持，右上角有「退出」按钮。
+
+> 不接数据库（纯本地模式）时不会出现登录框 —— 那种情况下数据只在你自己浏览器里，
+> 别人访问网址也只会看到他们自己的空白本地数据，本来就互相看不到。
 
 ---
 

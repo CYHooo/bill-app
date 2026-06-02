@@ -22,6 +22,7 @@ function Icon({ name, size = 22, stroke = 1.6 }) {
     case 'arrow': return (<svg {...p}><path d="M5 12h14M14 7l5 5-5 5" /></svg>);
     case 'sun': return (<svg {...p}><circle cx="12" cy="12" r="4" /><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4" /></svg>);
     case 'moon': return (<svg {...p}><path d="M17.5 13.8A6.5 6.5 0 0 1 10.2 6.5c0-.9.2-1.7.5-2.5a7 7 0 1 0 9.3 9.3c-.8.3-1.6.5-2.5.5z" /></svg>);
+    case 'logout': return (<svg {...p}><path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4" /><path d="M14 12h7M18 9l3 3-3 3" /></svg>);
     default: return null;
   }
 }
