@@ -78,18 +78,64 @@ function emptyState() {
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
+/* ---------- 演示种子数据（仅 demo 账号首次进入时填充） ---------- */
+// Anchored to the current month so the seed always looks fresh regardless
+// of when a visitor signs in with the demo credentials.
+function demoSeed() {
+  const today = new Date();
+  const month = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  const day = (d) => `${month}-${String(d).padStart(2, '0')}`;
+  const tx = (date, category, amount, note) => ({ id: uid(), date, category, amount, note: note || '' });
+  return {
+    transactions: [
+      tx(day(1), 'food',      13000, '公司附近午饭'),
+      tx(day(1), 'coffee',     4800, '美式'),
+      tx(day(1), 'transport',  2900, '地铁往返'),
+      tx(day(2), 'food',       9500, '便利店便当'),
+      tx(day(2), 'social',    48000, '朋友聚餐 AA'),
+      tx(day(2), 'coffee',     5500, '拿铁'),
+      tx(day(3), 'shopping',  32000, '日用品补货'),
+      tx(day(3), 'food',      16000, '晚饭'),
+      tx(day(4), 'fun',       18000, '电影'),
+      tx(day(4), 'transport',  3300, '打车'),
+      tx(day(4), 'coffee',     4800, '美式'),
+      tx(day(5), 'food',      22000, '烤肉'),
+      tx(day(5), 'social',    26000, '小酌'),
+    ],
+    cashflow: {
+      [month]: {
+        availableCash: 4400000,
+        rent: 500000, mgmt: 100000, phone: 88000,
+        cardRepayment: 1300000,
+        salary: 4400000,
+      },
+    },
+    settings: { savingGoal: 1000000 },
+  };
+}
+
 /* ============================================================
    Store —— 本地持久化 + 操作
-   （云同步：把 load/save 换成 Supabase 适配器即可，见 README）
    ============================================================ */
-const LS_KEY = 'ledger.v1';
+const LS_KEY_DEFAULT = 'ledger.v1';
+const LS_KEY_DEMO = 'ledger.v1.demo';
+
+// Demo accounts get their own localStorage bucket so the owner's local
+// cache never leaks into a shared test session (and vice versa).
+function isDemoUser() {
+  const C = window.LedgerCloud;
+  return !!(C && typeof C.isDemoUser === 'function' && C.isDemoUser());
+}
+function lsKey() {
+  return isDemoUser() ? LS_KEY_DEMO : LS_KEY_DEFAULT;
+}
 
 function loadState() {
   try {
-    const raw = localStorage.getItem(LS_KEY);
+    const raw = localStorage.getItem(lsKey());
     if (raw) return JSON.parse(raw);
   } catch (e) {}
-  return emptyState(); // 首次打开 = 空库（不再自动填演示数据）
+  return isDemoUser() ? demoSeed() : emptyState();
 }
 
 function useStore() {
@@ -116,7 +162,7 @@ function useStore() {
   useEffect(() => {
     if (first.current) { first.current = false; return; }
     const s = JSON.stringify(state);
-    try { localStorage.setItem(LS_KEY, s); } catch (e) {}
+    try { localStorage.setItem(lsKey(), s); } catch (e) {}
     const C = window.LedgerCloud;
     if (C && C.enabled && s !== lastSync.current) { lastSync.current = s; C.save(state); }
   }, [state]);
@@ -139,7 +185,7 @@ function useStore() {
   const setSetting = useCallback((patch) => {
     setState(s => ({ ...s, settings: { ...s.settings, ...patch } }));
   }, []);
-  const resetAll = useCallback(() => setState(emptyState()), []);
+  const resetAll = useCallback(() => setState(isDemoUser() ? demoSeed() : emptyState()), []);
   const clearAll = useCallback(() => setState(emptyState()), []);
 
   return { state, addTx, updateTx, deleteTx, setCashflow, setSetting, resetAll, clearAll };
