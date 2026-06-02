@@ -72,7 +72,6 @@ function emptyState() {
   return {
     transactions: [],
     cashflow: {},
-    settings: { savingGoal: 0 },
   };
 }
 
@@ -125,7 +124,6 @@ function demoSeed() {
         salary:         randInt(30, 60) * 100000,    // ₩3.0M – ₩6.0M
       },
     },
-    settings: { savingGoal: randInt(5, 20) * 100000 },
   };
 }
 
@@ -200,13 +198,10 @@ function useStore() {
       cashflow: { ...s.cashflow, [month]: { ...blankCashflow(), ...(s.cashflow[month] || {}), ...patch } },
     }));
   }, []);
-  const setSetting = useCallback((patch) => {
-    setState(s => ({ ...s, settings: { ...s.settings, ...patch } }));
-  }, []);
   const resetAll = useCallback(() => setState(isDemoUser() ? demoSeed() : emptyState()), []);
   const clearAll = useCallback(() => setState(emptyState()), []);
 
-  return { state, addTx, updateTx, deleteTx, setCashflow, setSetting, resetAll, clearAll };
+  return { state, addTx, updateTx, deleteTx, setCashflow, resetAll, clearAll };
 }
 
 /* ---------- 派生选择器 ---------- */
