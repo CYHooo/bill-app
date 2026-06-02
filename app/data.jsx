@@ -117,13 +117,15 @@ function demoSeed() {
     transactions,
     cashflow: {
       [month]: {
-        availableCash: randInt(30, 50) * 100000,
-        rent: 500000, mgmt: 100000, phone: 88000,
-        cardRepayment: randInt(8, 18) * 100000,
-        salary: 4400000,
+        availableCash:  randInt(30, 60) * 100000,    // ₩3.0M – ₩6.0M
+        rent:           randInt(30, 80) * 10000,     // ₩300k – ₩800k
+        mgmt:           randInt(5, 20) * 10000,      // ₩50k  – ₩200k
+        phone:          randInt(5, 12) * 10000,      // ₩50k  – ₩120k
+        cardRepayment:  randInt(8, 18) * 100000,     // ₩800k – ₩1.8M
+        salary:         randInt(30, 60) * 100000,    // ₩3.0M – ₩6.0M
       },
     },
-    settings: { savingGoal: 1000000 },
+    settings: { savingGoal: randInt(5, 20) * 100000 },
   };
 }
 
