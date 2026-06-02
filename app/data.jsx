@@ -36,8 +36,7 @@ function wonShort(n) {
 /* ---------- 日期工具 ---------- */
 const WK = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 function todayISO() {
-  const d = new Date(2026, 5, 1); // 应用基准“今天” = 2026-06-01
-  return iso(d);
+  return iso(new Date()); // 真实当前日期（随系统时间）
 }
 function iso(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -66,34 +65,12 @@ function blankCashflow() {
   };
 }
 
-/* ---------- 种子数据（演示用，可随时清空替换） ---------- */
-function seed() {
-  const tx = (date, category, amount, note) => ({ id: uid(), date, category, amount, note: note || '' });
+/* ---------- 初始空库（首次打开 / 清空数据时使用） ---------- */
+function emptyState() {
   return {
-    transactions: [
-      tx('2026-06-01', 'food', 13000, '公司附近午饭'),
-      tx('2026-06-01', 'coffee', 4800, '美式'),
-      tx('2026-06-01', 'transport', 2900, '地铁往返'),
-      tx('2026-06-02', 'food', 9500, '便利店便当'),
-      tx('2026-06-02', 'social', 48000, '朋友聚餐 AA'),
-      tx('2026-06-02', 'coffee', 5500, '拿铁'),
-      tx('2026-06-03', 'shopping', 32000, '日用品补货'),
-      tx('2026-06-03', 'food', 16000, '晚饭'),
-      tx('2026-06-04', 'fun', 18000, '电影'),
-      tx('2026-06-04', 'transport', 3300, '打车'),
-      tx('2026-06-04', 'coffee', 4800, '美式'),
-      tx('2026-06-05', 'food', 22000, '烤肉'),
-      tx('2026-06-05', 'social', 26000, '小酌'),
-    ],
-    cashflow: {
-      '2026-06': {
-        availableCash: 4400000,
-        rent: 800000, mgmt: 150000, phone: 70000,
-        cardRepayment: 1300000,
-        salary: 4400000,
-      },
-    },
-    settings: { savingGoal: 1000000 },
+    transactions: [],
+    cashflow: {},
+    settings: { savingGoal: 0 },
   };
 }
 
@@ -110,7 +87,7 @@ function loadState() {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) return JSON.parse(raw);
   } catch (e) {}
-  return seed();
+  return emptyState(); // 首次打开 = 空库（不再自动填演示数据）
 }
 
 function useStore() {
@@ -160,8 +137,8 @@ function useStore() {
   const setSetting = useCallback((patch) => {
     setState(s => ({ ...s, settings: { ...s.settings, ...patch } }));
   }, []);
-  const resetAll = useCallback(() => setState(seed()), []);
-  const clearAll = useCallback(() => setState({ transactions: [], cashflow: {}, settings: { savingGoal: 0 } }), []);
+  const resetAll = useCallback(() => setState(emptyState()), []);
+  const clearAll = useCallback(() => setState(emptyState()), []);
 
   return { state, addTx, updateTx, deleteTx, setCashflow, setSetting, resetAll, clearAll };
 }
