@@ -127,13 +127,35 @@ function SyncBadge() {
   );
 }
 
-/* 空闲自动退出：超过 IDLE_TIMEOUT_MS 没有任何用户交互就 signOut */
+/* 空闲自动退出：超过 IDLE_TIMEOUT_MS 没有任何用户交互就 signOut。
+   配合 localStorage 时间戳：关掉网页后再打开，若距上次活动也超过该阈值，
+   同样强制重新登录（见 App 里的 idleExpired 判断）。 */
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+const IDLE_KEY = 'ledger.lastActive';
+
+// Persist the last-interaction time so a fresh page load can decide whether
+// the restored session has been idle too long and must re-authenticate.
+function markActive() {
+  try { localStorage.setItem(IDLE_KEY, String(Date.now())); } catch (e) {}
+}
+function clearActive() {
+  try { localStorage.removeItem(IDLE_KEY); } catch (e) {}
+}
+function idleExpired() {
+  let t = 0;
+  try { t = parseInt(localStorage.getItem(IDLE_KEY) || '0', 10) || 0; } catch (e) { t = 0; }
+  return t > 0 && (Date.now() - t) > IDLE_TIMEOUT_MS;
+}
+
 function useIdleSignOut(active) {
   useEffect(() => {
     if (!active) return;
     let timer = null;
+    let lastWrite = 0;
     const reset = () => {
+      const now = Date.now();
+      // 节流写入：活动事件很密集，最多每 5 秒落一次盘
+      if (now - lastWrite > 5000) { markActive(); lastWrite = now; }
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => {
         if (window.LedgerAuth) window.LedgerAuth.signOut();
@@ -142,11 +164,14 @@ function useIdleSignOut(active) {
     const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'wheel'];
     events.forEach(e => window.addEventListener(e, reset, { passive: true }));
     document.addEventListener('visibilitychange', reset);
+    window.addEventListener('beforeunload', markActive);  // 关页面前记一次
+    markActive();
     reset();
     return () => {
       if (timer) clearTimeout(timer);
       events.forEach(e => window.removeEventListener(e, reset));
       document.removeEventListener('visibilitychange', reset);
+      window.removeEventListener('beforeunload', markActive);
     };
   }, [active]);
 }
@@ -158,7 +183,13 @@ function App() {
 
   useEffect(() => {
     if (!authOn) return;
-    window.LedgerAuth.onChange(u => setPhase(u ? 'in' : 'out'));
+    window.LedgerAuth.onChange(u => {
+      if (!u) { clearActive(); setPhase('out'); return; }
+      // 会话已被本地恢复，但距上次活动已超时 → 强制重新登录
+      // （signOut 会再次触发 onChange(null)，由上面的分支收尾）
+      if (idleExpired()) { window.LedgerAuth.signOut(); return; }
+      setPhase('in');
+    });
   }, []);
 
   useIdleSignOut(authOn && phase === 'in');
